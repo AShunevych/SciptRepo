@@ -33,20 +33,14 @@ for f in "${include_files[@]}"; do
     fi
 done
 
-# Sort module paths by descending length to prioritize deeper modules first
-# This can be an option if needed, but first or mid level modules is enough,
-# I don't see any sense to run tests only to some third level like (app:core:core2), when we can simply test entire module (app:core)
-#
-#sorted_module_paths=($(for path in "${!module_map[@]}"; do
-#    echo "$path"
-#done | awk '{ print length, $0 }' | sort -rn | cut -d" " -f2-))
-#
-
-# Determine affected modules by matching changed files against sorted paths
 for file in "${changed_files[@]}"; do
     for module_path in "${!module_map[@]}"; do
         if [[ "$file" == "$module_path/"* ]]; then
-            affected_modules+=("$(echo "${module_map[$module_path]}" | sed 's/^://; s/:/\//g')")
+            # Return top module name, e.g. app
+            affected_modules+=("$(sed -E 's/^:([^:]+).*/\1/' <<< "${module_map[$module_path]}")")
+            # Alt variant: returns  middle module name, e.g. app/core 
+            # However it will require to add more annotaion generation logic to [produceTestTargtsForModule.bash], but I think top-level is enough 
+            # affected_modules+=("$(echo "${module_map[$module_path]}" | sed 's/^://; s/:/\//g')")
             break
         fi
     done
