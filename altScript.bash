@@ -11,7 +11,7 @@ include_files=("settings.gradle")
 declare -A module_map
 
 # Regex pattern to match lines like: include ':app' or include ":module:core"
-# '' can cause issues while parsing
+# '' and " " can cause issues while parsing
 pattern='include[[:space:]]*['"'"'"]([^'"'"']+)['"'"'"]'
 
 # Read each include file and extract included modules
