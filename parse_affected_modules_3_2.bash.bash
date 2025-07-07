@@ -42,19 +42,24 @@ for file in "${changed_files[@]}"; do
         module_path="${module_paths[$i]}"
         echo "Checking module path: $module_path"
         if [[ "$file" == "$module_path/"* ]]; then
-            raw_module="${module_names[$i]}"
-            echo "Raw module: $raw_module"
+            raw="${module_names[$i]}"
+            echo "module_names[$i]: '$raw'"
 
-            # Extract first-level module name portably
-            # Try awk for macOS compatibility
-            module_name=$(echo "$raw_module" | awk -F':' '{print $2}')
-            echo "Extracted module name: $module_name"
+            raw="${raw#:}"  # Remove leading colon
+            if [[ "$raw" == *:* ]]; then
+                module_name="${raw%%:*}"
+            else
+                module_name="$raw"
+            fi
+
+            echo "Extracted module_name: '$module_name'"
 
             affected_modules+=("$module_name")
             break
         fi
     done
 done
+
 
 # Output unique affected modules
 printf "%s\n" "${affected_modules[@]}" | sort -u > affected-modules.txt
