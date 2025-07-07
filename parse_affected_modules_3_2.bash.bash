@@ -40,9 +40,16 @@ for file in "${changed_files[@]}"; do
     file="${file#./}"  # Normalize
     for i in "${!module_paths[@]}"; do
         module_path="${module_paths[$i]}"
+        echo "Checking module path: $module_path"
         if [[ "$file" == "$module_path/"* ]]; then
-            # Get base module name (first segment after :)
-            module_name=$(echo "${module_names[$i]}" | sed -E 's/^:([^:]+).*/\1/')
+            raw_module="${module_names[$i]}"
+            echo "Raw module: $raw_module"
+
+            # Extract first-level module name portably
+            # Try awk for macOS compatibility
+            module_name=$(echo "$raw_module" | awk -F':' '{print $2}')
+            echo "Extracted module name: $module_name"
+
             affected_modules+=("$module_name")
             break
         fi
