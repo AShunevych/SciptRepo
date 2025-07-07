@@ -27,8 +27,7 @@ for f in "${include_files[@]}"; do
             if [[ "$trimmed_line" =~ $pattern ]]; then
                 module="${BASH_REMATCH[1]}"
                 # Replace colon ':' with slash '/', no backslash before slash here!
-                path="${module//:/\/}"
-                # Remove leading slash if any
+                path=$(echo "$module" | sed 's/:/\//g')
                 path="${path#/}"
                 module_paths+=("$path")
                 module_names+=("$module")
