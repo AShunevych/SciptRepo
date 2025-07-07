@@ -2,45 +2,47 @@
 set -e
 
 changed_files_file="$1"
-changed_files=()
 
-# Read changed files into an array (Bash 3.2 doesn't support mapfile)
+# Read changed files into array
+changed_files=()
 while IFS= read -r line; do
     changed_files+=("$line")
 done < "$changed_files_file"
 
 include_files=("settings.gradle")
-declare -A module_map
+module_paths=()
+module_names=()
 
-# Regex pattern to match: include ':app' or include ":module:core"
+# Pattern to match: include ':app' or include ":module:core"
 pattern='include[[:space:]]*['"'"'"]([^'"'"']+)['"'"'"]'
 
-# Parse included modules from settings.gradle
+# Extract module includes
 for f in "${include_files[@]}"; do
     if [[ -f "$f" ]]; then
         while IFS= read -r line; do
-            # Trim leading/trailing whitespace
             trimmed_line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             if [[ "$trimmed_line" =~ $pattern ]]; then
                 module="${BASH_REMATCH[1]}"
                 path="${module//:/\/}"
                 path="${path#/}"
-                module_map["$path"]="$module"
+                module_paths+=("$path")
+                module_names+=("$module")
             fi
         done < "$f"
     fi
 done
 
+# Track affected modules
 affected_modules=()
 
 # Match changed files to modules
 for file in "${changed_files[@]}"; do
-    file="${file#./}"  # Normalize leading ./ if present
-    for module_path in "${!module_map[@]}"; do
+    file="${file#./}"  # Normalize
+    for i in "${!module_paths[@]}"; do
+        module_path="${module_paths[$i]}"
         if [[ "$file" == "$module_path/"* ]]; then
-            module="${module_map[$module_path]}"
-            # Extract first-level module name (e.g., ':app:core' => 'app')
-            module_name=$(echo "$module" | sed -E 's/^:([^:]+).*/\1/')
+            # Get base module name (first segment after :)
+            module_name=$(echo "${module_names[$i]}" | sed -E 's/^:([^:]+).*/\1/')
             affected_modules+=("$module_name")
             break
         fi
