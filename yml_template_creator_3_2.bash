@@ -1,62 +1,60 @@
 #!/bin/bash
 
+# Generates a YAML annotation block from a list of modules, based on mapping.
+# Inject it into a Flank config template as annotation target.
+
 input_file="$1"
 output_file="output_flank.yml"
 template_file="flank.yml"
 map_file="module_map.txt"
 
-# Function to map module name to YAML annotation
 map_module() {
     local module="$1"
     local annotation="com.default.module"
-    local mapped
 
     if [ -f "$map_file" ]; then
+        local mapped
         mapped=$(grep -E "^$module=" "$map_file" | head -n1 | cut -d'=' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
         if [ -n "$mapped" ]; then
             annotation="$mapped"
         else
-            echo "WARNING: No mapping for module '$module'. Using default." >&2
+            # To prevent PR from failing if no mapping found (e.g. module was changed -  added / removed / renamed) and add standard annotation for PR tests.
+            # We need to make some notification mechanism in the future.
+            echo "No mapping found for module '$module'. Adding default - $annotation." >&2
         fi
-    else
-        echo "WARNING: Map file '$map_file' not found. Using default for all modules." >&2
     fi
 
     echo "$annotation"
 }
 
-# Track seen annotations to avoid duplicates
-seen_annotations=""
-
-# Build list of YAML entries
+# Deduplication tracker
+duplicate=""
+# Modules list block for YAML
 modules_list=""
+
 while IFS= read -r module || [ -n "$module" ]; do
-    module=$(echo "$module" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//') # Trim whitespace
-    [ -z "$module" ] && continue  # Skip empty lines
-
+    # Trim leading/trailing whitespace
+    module=$(echo "$module" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    # Skip empty lines
+    [ -z "$module" ] && continue
+    # Get annotation for module
     annotation=$(map_module "$module")
-
-    # Check if this annotation has already been added
-    if ! echo "$seen_annotations" | grep -qx "$annotation"; then
-        seen_annotations="$seen_annotations
+    # Deduplicate: only add if not already seen
+    if ! echo "$duplicate" | grep -qx "$annotation"; then
+        duplicate="$duplicate
 $annotation"
         modules_list="$modules_list
 - annotation: $annotation"
     fi
 done < "$input_file"
 
-# Remove leading/trailing blank lines and indent by 4 spaces
+#Format for YAML: remove empty lines and indent each line by 4 spaces
 modules_list=$(printf '%s\n' "$modules_list" | sed '/^[[:space:]]*$/d' | sed 's/^/    /')
 
-# Debug output
-echo "DEBUG: Final modules list:"
-echo "$modules_list"
-echo "------"
-
-# Export for envsubst
 export target="$modules_list"
 
-# Generate final YAML
+# Generate output YAML
 envsubst < "$template_file" > "$output_file"
 
-echo "YAML was generated"
+echo "YAML successfully generated: $output_file"
