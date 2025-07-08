@@ -19,8 +19,6 @@ map_module() {
         if [ -n "$mapped" ]; then
             annotation="$mapped"
         else
-            # To prevent PR from failing if no mapping found (e.g. module was changed -  added / removed / renamed) and add standard annotation for PR tests.
-            # We need to make some notification mechanism in the future.
             echo "No mapping found for module '$module'. Adding default - $annotation." >&2
         fi
     fi
@@ -28,29 +26,32 @@ map_module() {
     echo "$annotation"
 }
 
-# Deduplication tracker
+# Tracker for deduplication
 duplicate=""
-# Modules list block for YAML
-modules_list=""
+annotations=""
 
 while IFS= read -r module || [ -n "$module" ]; do
-    # Trim leading/trailing whitespace
     module=$(echo "$module" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    # Skip empty lines
     [ -z "$module" ] && continue
-    # Get annotation for module
+
     annotation=$(map_module "$module")
-    # Deduplicate: only add if not already seen
-    if ! echo "$duplicate" | grep -qx "$annotation"; then
-        duplicate="$duplicate
+
+    # Deduplicate using a newline-separated string
+    if ! echo "$duplicate" | grep -xq "$annotation"; then
+        duplicate="${duplicate}
 $annotation"
-        modules_list="$modules_list
-- annotation: $annotation"
+
+        # Append to annotations string with comma separator
+        if [ -z "$annotations" ]; then
+            annotations="$annotation"
+        else
+            annotations="${annotations}, $annotation"
+        fi
     fi
 done < "$input_file"
 
-#Format for YAML: remove empty lines and indent each line by 4 spaces
-modules_list=$(printf '%s\n' "$modules_list" | sed '/^[[:space:]]*$/d' | sed 's/^/    /')
+# Prepare YAML block with a single annotation line
+modules_list=" - annotation: $annotations"
 
 export target="$modules_list"
 
