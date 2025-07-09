@@ -60,16 +60,21 @@ fi
 escaped_targets=$(printf '%s\n' "$targets" | sed 's/"/\\"/g')
 
 # Preserving multi-line targets properly in case if targets are long
-awk -v t="$escaped_targets" -v s="$testShardsNumber" '
-  $0 ~ /\$target/ {
-    n = split(t, lines, "\n")
-    for (i = 1; i <= n; i++) print lines[i]
-    next
+awk -v s="$testShardsNumber" '
+  BEGIN {
+    while ((getline line < "/dev/fd/3") > 0) {
+      targets[++n] = line
+    }
+    close("/dev/fd/3")
   }
   {
+    if ($0 ~ /\$target/) {
+      for (i=1; i<=n; i++) print targets[i]
+      next
+    }
     gsub(/\$testShardsNumber/, s)
     print
   }
-' "$template_file" > "$output_file"
+' 3<<<"$targets" "$template_file" > "$output_file"
 
 echo "✅ YAML successfully generated: $output_file"
