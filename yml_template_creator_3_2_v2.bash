@@ -56,25 +56,12 @@ else
     testShardsNumber=2
 fi
 
-# Escape double quotes but keep real newlines intact
-escaped_targets=$(printf '%s\n' "$targets" | sed 's/"/\\"/g')
-
-# Preserving multi-line targets properly in case if targets are long
-awk -v s="$testShardsNumber" '
-  BEGIN {
-    while ((getline line < "/dev/fd/3") > 0) {
-      targets[++n] = line
-    }
-    close("/dev/fd/3")
-  }
-  {
-    if ($0 ~ /\$target/) {
-      for (i=1; i<=n; i++) print targets[i]
-      next
-    }
-    gsub(/\$testShardsNumber/, s)
-    print
-  }
-' 3<<<"$targets" "$template_file" > "$output_file"
+while IFS= read -r line; do
+  if [[ "$line" == *"\$target"* ]]; then
+    echo "$targets"
+  else
+    echo "${line//\$testShardsNumber/$testShardsNumber}"
+  fi
+done < "$template_file" > "$output_file"
 
 echo "✅ YAML successfully generated: $output_file"
