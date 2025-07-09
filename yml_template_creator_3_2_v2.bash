@@ -25,7 +25,7 @@ while IFS= read -r module || [ -n "$module" ]; do
     [ -z "$mapped" ] && continue
 
     if [ "$module" = "app" ]; then
-        targets="  - annotation $mapped"
+        targets="    - annotation $mapped"
         first_entry=false
         break
     fi
@@ -38,11 +38,11 @@ $mapped"
     for test in $mapped; do
         test=$(echo "$test" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
         if [ "$first_entry" = true ]; then
-            targets="  - class $test"
+            targets="    - class $test"
             first_entry=false
         else
             targets="${targets}
-  - class $test"
+    - class $test"
         fi
     done
     unset IFS
