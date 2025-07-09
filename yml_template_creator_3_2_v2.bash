@@ -56,9 +56,20 @@ else
     testShardsNumber=2
 fi
 
-echo "Settings test with $testShardsNumber shards"
+# Escape double quotes but keep real newlines intact
+escaped_targets=$(printf '%s\n' "$targets" | sed 's/"/\\"/g')
 
-# Inline awk command:
-awk -v t="$targets" -v s="$testShardsNumber" '$0 ~ /\$target/ { print t; next } { gsub(/\$testShardsNumber/, s); print }' "$template_file" > "$output_file"
+# Preserving multi-line targets properly in case if targets are long
+awk -v t="$escaped_targets" -v s="$testShardsNumber" '
+  $0 ~ /\$target/ {
+    n = split(t, lines, "\n")
+    for (i = 1; i <= n; i++) print lines[i]
+    next
+  }
+  {
+    gsub(/\$testShardsNumber/, s)
+    print
+  }
+' "$template_file" > "$output_file"
 
 echo "✅ YAML successfully generated: $output_file"
